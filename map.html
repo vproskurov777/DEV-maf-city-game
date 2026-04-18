@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Маф Сіті — Карта</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="nav">
+  <a href="index.html">🏠 Головна</a>
+  <a href="map.html">🎮 Гра</a>
+  <a href="territories.html">🗺 Території</a>
+  <a href="teams.html">👥 Команди</a>
+</div>
+
+<div id="app"></div>
+
+<script src="map.js"></script>
+<script src="game.js"></script>
+
+<script>
+function initMapPage() {
+  state.deck = shuffleArray(createDeck());
+  state.teams = createTeams();
+  state.deck = dealStartingCards(state.teams, state.deck);
+  state.territories = createTerritoriesFromMap();
+
+  assignStartingTerritories(state.teams, state.territories);
+
+  renderGame();
+}
+
+initMapPage();
+</script>
+
+</body>
+</html>

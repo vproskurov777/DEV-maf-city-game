@@ -1,0 +1,351 @@
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #111827;
+  color: #f9fafb;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+h1, h2, h3 {
+  text-align: center;
+}
+
+#app {
+  background: rgba(17, 24, 39, 0.9);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 400px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.section {
+  margin-bottom: 30px;
+}
+
+.teams-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.team-card {
+  padding: 12px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #1f2937;
+}
+
+.map-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.map-wrapper {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.real-map {
+  position: relative;
+  width: 1100px;
+  aspect-ratio: 2048 / 1348;
+  background-image: url("./assets/maf-city-round1.png");
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.territory-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.territory-label:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+.territory-label.selected {
+  border-color: #facc15;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.8);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.owner-none {
+  background: rgba(31, 41, 55, 0.75);
+}
+
+.owner-1 {
+  background: rgba(168, 85, 247, 0.78);
+}
+
+.owner-2 {
+  background: rgba(239, 68, 68, 0.78);
+}
+
+.owner-3 {
+  background: rgba(249, 115, 22, 0.78);
+}
+
+.owner-4 {
+  background: rgba(6, 182, 212, 0.78);
+}
+
+.owner-5 {
+  background: rgba(226, 232, 240, 0.78);
+  color: #111827;
+}
+
+.owner-6 {
+  background: rgba(34, 197, 94, 0.78);
+}
+
+.info-panel {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 220px;
+}
+
+.info-panel p {
+  margin: 10px 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.legend-color {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #111;
+  border-radius: 4px;
+}
+
+.territories-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.territory-card {
+  padding: 12px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #1f2937;
+}
+
+@media (max-width: 1200px) {
+  .map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .teams-list,
+  .territories-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.debug-coords {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #22c55e;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.control-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.control-button:hover {
+  background: #1d4ed8;
+}
+
+.control-button.secondary {
+  background: #4b5563;
+}
+
+.control-button.secondary:hover {
+  background: #374151;
+}
+
+.territory-label.attack-source {
+  border-color: #22c55e;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.9);
+}
+
+.territory-label.attack-target {
+  border-color: #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.9);
+}
+
+.territory-label.attack-available {
+  border-color: #60a5fa;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.8);
+}
+
+.attack-panel {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.attack-panel p {
+  margin: 8px 0;
+}
+
+.side-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.defense-panel {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.defense-panel p {
+  margin: 8px 0;
+}
+
+.control-button.success {
+  background: #16a34a;
+}
+
+.control-button.success:hover {
+  background: #15803d;
+}
+
+.control-button.danger {
+  background: #dc2626;
+}
+
+.control-button.danger:hover {
+  background: #b91c1c;
+}
+
+.territory-label.defended {
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.95);
+}
+
+.nav {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.nav a {
+  text-decoration: none;
+  background: #1f2937;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #374151;
+  transition: 0.2s;
+}
+
+.nav a:hover {
+  background: #374151;
+}
+
+.menu-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at top, #111827, #020617);
+}
+
+.game-title {
+  font-size: 56px;
+  margin-bottom: 40px;
+  color: #ef4444;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.menu-button {
+  text-decoration: none;
+  background: #1f2937;
+  color: white;
+  padding: 14px 28px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  font-size: 18px;
+  transition: 0.2s;
+  text-align: center;
+}
+
+.menu-button:hover {
+  background: #374151;
+  transform: scale(1.05);
+}
