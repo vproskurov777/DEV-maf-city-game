@@ -174,7 +174,7 @@ const GAME_MAP = [
     name: "Саузгейт",
     type: TERRITORY_TYPES.START,
     ownerId: null,
-    neighbors: [16, 17, 18, 20],
+    neighbors: [16, 18, 20],
     x: 42.8,
     y: 81.7
   },
