@@ -349,3 +349,10 @@ h1, h2, h3 {
   background: #374151;
   transform: scale(1.05);
 }
+
+.territory-action-menu {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}

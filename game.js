@@ -16,11 +16,20 @@ const state = {
   teams: [],
   territories: [],
   deck: [],
+
   selectedTerritoryId: null,
-  attackMode: false,
-  attackFromTerritoryId: null,
-  attackTargetTerritoryId: null,
-  attacksThisTurn: []
+
+  currentAction: null, // null | "attack" | "defense"
+  actionSourceTerritoryId: null,
+  actionTargetTerritoryId: null,
+
+  selectedCardsForAction: [],
+
+  plannedAttacks: [],
+  plannedDefenses: [],
+
+  currentRound: 1,
+  currentPhase: "morning"
 };
 
 function createDeck() {
@@ -166,6 +175,14 @@ function isOwnTerritory(territory) {
   return Boolean(territory && territory.ownerId);
 }
 
+function isEnemyOrNeutralTerritory(sourceTerritory, targetTerritory) {
+  if (!sourceTerritory || !targetTerritory) {
+    return false;
+  }
+
+  return targetTerritory.ownerId !== sourceTerritory.ownerId;
+}
+
 function isAvailableAttackTarget(territoryId) {
   if (!state.attackMode || !state.attackFromTerritoryId) {
     return false;
@@ -232,14 +249,27 @@ function renderMap(territories, selectedTerritoryId) {
         ${territories.map(territory => {
           const ownerClass = territory.ownerId ? `owner-${territory.ownerId}` : "owner-none";
           const selectedClass = territory.id === selectedTerritoryId ? "selected" : "";
-          const sourceClass = territory.id === state.attackFromTerritoryId ? "attack-source" : "";
-          const targetClass = territory.id === state.attackTargetTerritoryId ? "attack-target" : "";
-          const availableClass = isAvailableAttackTarget(territory.id) ? "attack-available" : "";
-          const defendedClass = territory.isDefended ? "defended" : "";
+
+          const attackAvailableClass =
+            state.currentAction === "attack" &&
+            state.actionSourceTerritoryId &&
+            getAvailableAttackTargets(state.actionSourceTerritoryId).some(item => item.id === territory.id)
+              ? "attack-available"
+              : "";
+
+          const attackSourceClass =
+            state.currentAction === "attack" && territory.id === state.actionSourceTerritoryId
+              ? "attack-source"
+              : "";
+
+          const defenseSourceClass =
+            state.currentAction === "defense" && territory.id === state.actionSourceTerritoryId
+              ? "defended"
+              : "";
 
           return `
             <div
-              class="territory-label ${ownerClass} ${selectedClass} ${sourceClass} ${targetClass} ${availableClass} ${defendedClass}"
+              class="territory-label ${ownerClass} ${selectedClass} ${attackAvailableClass} ${attackSourceClass} ${defenseSourceClass}"
               style="left: ${territory.x}%; top: ${territory.y}%;"
               title="${territory.name} | ${getTerritoryTypeLabel(territory.type)}"
               data-territory-id="${territory.id}"
@@ -280,127 +310,57 @@ function renderSelectedTerritoryInfo(selectedTerritoryId) {
       <h3>${territory.name}</h3>
       <p><strong>Тип:</strong> ${getTerritoryTypeLabel(territory.type)}</p>
       <p><strong>Власник:</strong> ${getOwnerName(territory.ownerId)}</p>
-      <p><strong>Захист:</strong> ${territory.isDefended ? "Установлено" : "Немає"}</p>
+      <p><strong>Захист:</strong> ${
+        state.plannedDefenses.some(item => item.territoryId === territory.id)
+          ? "Заплановано"
+          : "Немає"
+      }</p>
+
+      ${renderTerritoryActionMenu()}
     </div>
   `;
 }
 
 function renderAttackPanel() {
-  const fromTerritory = getTerritoryById(state.attackFromTerritoryId);
-  const targetTerritory = getTerritoryById(state.attackTargetTerritoryId);
-  const attacksThisTurn = state.attacksThisTurn || [];
-
-  const attacksListHtml = attacksThisTurn.length
-    ? `
-      <div style="margin-top: 14px;">
-        <p><strong>Атаки за цей хід:</strong></p>
-        <ul style="margin: 8px 0 0 18px; padding: 0;">
-          ${state.attacksThisTurn.map(attack => {
-            const from = getTerritoryById(attack.fromId);
-            const target = getTerritoryById(attack.targetId);
-
-            return `<li>${from?.name || attack.fromId} → ${target?.name || attack.targetId}</li>`;
-          }).join("")}
-        </ul>
-      </div>
-    `
-    : `<p style="margin-top: 14px;"><strong>Атаки за цей хід:</strong> ще немає</p>`;
-
-  if (!state.attackMode) {
+  if (state.currentAction !== "attack") {
     return `
       <div class="attack-panel">
         <h3>Атака</h3>
-        <p>Вибери свою територію і натисни кнопку.</p>
-
-        <div class="controls" style="justify-content: flex-start; margin-bottom: 0; margin-top: 12px;">
-          <button class="control-button" id="startAttackButton">Атакувати</button>
-          <button class="control-button secondary" id="cancelAttackButton">Скасувати атаку</button>
-        </div>
-
-        ${attacksListHtml}
+        <p>Щоб почати атаку, вибери свою територію і натисни “Атакувати”.</p>
       </div>
     `;
   }
 
-  if (!fromTerritory) {
-    return `
-      <div class="attack-panel">
-        <h3>Атака</h3>
-        <p>Оберіть територію, з якої буде атака.</p>
-
-        <div class="controls" style="justify-content: flex-start; margin-bottom: 0; margin-top: 12px;">
-          <button class="control-button secondary" id="cancelAttackButton">Скасувати атаку</button>
-        </div>
-
-        ${attacksListHtml}
-      </div>
-    `;
-  }
-
-  if (!targetTerritory) {
-    return `
-      <div class="attack-panel">
-        <h3>Атака</h3>
-        <p><strong>Звідки:</strong> ${fromTerritory.name}</p>
-        <p>Тепер вибери сусідню ціль.</p>
-
-        <div class="controls" style="justify-content: flex-start; margin-bottom: 0; margin-top: 12px;">
-          <button class="control-button secondary" id="cancelAttackButton">Скасувати атаку</button>
-        </div>
-
-        ${attacksListHtml}
-      </div>
-    `;
-  }
+  const source = getTerritoryById(state.actionSourceTerritoryId);
+  const target = getTerritoryById(state.actionTargetTerritoryId);
 
   return `
     <div class="attack-panel">
       <h3>Атака</h3>
-      <p><strong>Звідки:</strong> ${fromTerritory.name}</p>
-      <p><strong>Куди:</strong> ${targetTerritory.name}</p>
-      <p><strong>Статус:</strong> атака дозволена</p>
-
-      <div class="controls" style="justify-content: flex-start; margin-bottom: 0; margin-top: 12px;">
-        <button class="control-button" id="confirmAttackButton">Підтвердити атаку</button>
-        <button class="control-button secondary" id="cancelAttackButton">Скасувати атаку</button>
-      </div>
-
-      ${attacksListHtml}
+      <p><strong>Звідки:</strong> ${source ? source.name : "—"}</p>
+      <p><strong>Куди:</strong> ${target ? target.name : "не вибрано"}</p>
+      <p>Наступним кроком тут буде вибір карт для атаки.</p>
     </div>
   `;
 }
 
 function renderDefensePanel() {
-  if (!state.selectedTerritoryId) {
+  if (state.currentAction !== "defense") {
     return `
       <div class="defense-panel">
         <h3>Захист</h3>
-        <p>Вибери територію, щоб налаштувати захист.</p>
+        <p>Щоб поставити захист, вибери свою територію і натисни “Захистити”.</p>
       </div>
     `;
   }
 
-  const territory = getTerritoryById(state.selectedTerritoryId);
-
-  if (!territory) {
-    return `
-      <div class="defense-panel">
-        <h3>Захист</h3>
-        <p>Територію не знайдено.</p>
-      </div>
-    `;
-  }
+  const source = getTerritoryById(state.actionSourceTerritoryId);
 
   return `
     <div class="defense-panel">
       <h3>Захист</h3>
-      <p><strong>Територія:</strong> ${territory.name}</p>
-      <p><strong>Статус захисту:</strong> ${territory.isDefended ? "Установлено" : "Немає"}</p>
-
-      <div class="controls" style="justify-content: flex-start; margin-bottom: 0; margin-top: 12px;">
-        <button class="control-button success" id="setDefenseButton">Поставити захист</button>
-        <button class="control-button danger" id="removeDefenseButton">Зняти захист</button>
-      </div>
+      <p><strong>Територія:</strong> ${source ? source.name : "—"}</p>
+      <p>Наступним кроком тут буде вибір карт для захисту.</p>
     </div>
   `;
 }
@@ -464,13 +424,17 @@ function attachTerritoryEvents() {
 
       state.selectedTerritoryId = territoryId;
 
-      if (state.attackMode) {
-        if (!state.attackFromTerritoryId) {
-          if (territory && isOwnTerritory(territory)) {
-            state.attackFromTerritoryId = territory.id;
-          }
-        } else if (isAvailableAttackTarget(territoryId)) {
-          state.attackTargetTerritoryId = territoryId;
+      if (
+        state.currentAction === "attack" &&
+        state.actionSourceTerritoryId &&
+        territoryId !== state.actionSourceTerritoryId
+      ) {
+        const availableTargets = getAvailableAttackTargets(state.actionSourceTerritoryId);
+
+        const isValidTarget = availableTargets.some(item => item.id === territoryId);
+
+        if (isValidTarget) {
+          state.actionTargetTerritoryId = territoryId;
         }
       }
 
@@ -478,7 +442,7 @@ function attachTerritoryEvents() {
     });
   });
 
-  if (DEBUG) {
+  if (typeof DEBUG !== "undefined" && DEBUG) {
     const mapElement = document.getElementById("realMap");
     const coordsBox = document.getElementById("coordsBox");
 
@@ -496,79 +460,58 @@ function attachTerritoryEvents() {
 }
 
 function attachControlEvents() {
-  const enableAttackButton = document.getElementById("enableAttackButton");
-  const cancelAttackButton = document.getElementById("cancelAttackButton");
-  const setDefenseButton = document.getElementById("setDefenseButton");
-  const removeDefenseButton = document.getElementById("removeDefenseButton");
+  const attackActionButton = document.getElementById("attackActionButton");
+  const defenseActionButton = document.getElementById("defenseActionButton");
+  const cancelActionButton = document.getElementById("cancelActionButton");
 
-  if (enableAttackButton) {
-    enableAttackButton.addEventListener("click", () => {
+  if (attackActionButton) {
+    attackActionButton.addEventListener("click", () => {
       if (!state.selectedTerritoryId) {
-        alert("Спочатку вибери територію.");
         return;
       }
 
       const territory = getTerritoryById(state.selectedTerritoryId);
 
       if (!territory || !isOwnTerritory(territory)) {
-        alert("Для початку атаки потрібно вибрати свою територію.");
         return;
       }
 
-      state.attackMode = true;
-      state.attackFromTerritoryId = territory.id;
-      state.attackTargetTerritoryId = null;
+      state.currentAction = "attack";
+      state.actionSourceTerritoryId = territory.id;
+      state.actionTargetTerritoryId = null;
+      state.selectedCardsForAction = [];
 
       renderGame();
     });
   }
 
-  if (cancelAttackButton) {
-    cancelAttackButton.addEventListener("click", () => {
-      resetAttackState();
-      state.selectedTerritoryId = null;
-      renderGame();
-    });
-}
-
-  if (setDefenseButton) {
-    setDefenseButton.addEventListener("click", () => {
+  if (defenseActionButton) {
+    defenseActionButton.addEventListener("click", () => {
       if (!state.selectedTerritoryId) {
-        alert("Спочатку вибери територію.");
         return;
       }
 
       const territory = getTerritoryById(state.selectedTerritoryId);
 
-      if (!territory) {
-        alert("Територію не знайдено.");
+      if (!territory || !isOwnTerritory(territory)) {
         return;
       }
 
-      territory.isDefended = true;
+      state.currentAction = "defense";
+      state.actionSourceTerritoryId = territory.id;
+      state.actionTargetTerritoryId = null;
+      state.selectedCardsForAction = [];
+
       renderGame();
     });
   }
 
-  if (removeDefenseButton) {
-    removeDefenseButton.addEventListener("click", () => {
-      if (!state.selectedTerritoryId) {
-        alert("Спочатку вибери територію.");
-        return;
-      }
-
-      const territory = getTerritoryById(state.selectedTerritoryId);
-
-      if (!territory) {
-        alert("Територію не знайдено.");
-        return;
-      }
-
-      territory.isDefended = false;
+  if (cancelActionButton) {
+    cancelActionButton.addEventListener("click", () => {
+      resetCurrentAction();
       renderGame();
     });
   }
-
 }
 
 function initGame() {
@@ -580,6 +523,33 @@ function initGame() {
   assignStartingTerritories(state.teams, state.territories);
 
   renderGame();
+}
+
+function resetCurrentAction() {
+  state.currentAction = null;
+  state.actionSourceTerritoryId = null;
+  state.actionTargetTerritoryId = null;
+  state.selectedCardsForAction = [];
+}
+
+function renderTerritoryActionMenu() {
+  if (!state.selectedTerritoryId) {
+    return "";
+  }
+
+  const territory = getTerritoryById(state.selectedTerritoryId);
+
+  if (!territory || !isOwnTerritory(territory)) {
+    return "";
+  }
+
+  return `
+    <div class="territory-action-menu">
+      <button class="control-button" id="attackActionButton">Атакувати</button>
+      <button class="control-button secondary" id="defenseActionButton">Захистити</button>
+      <button class="control-button secondary" id="cancelActionButton">Скасувати</button>
+    </div>
+  `;
 }
 
 initGame();
