@@ -309,7 +309,6 @@ function renderSelectedTerritoryInfo(selectedTerritoryId) {
   }
 
   const plannedDefense = getPlannedDefenseForTerritory(territory.id);
-  const incomingAttacks = getPlannedAttacksToTerritory(territory.id);
 
   return `
     <div class="info-panel">
@@ -317,9 +316,6 @@ function renderSelectedTerritoryInfo(selectedTerritoryId) {
       <p><strong>Тип:</strong> ${getTerritoryTypeLabel(territory.type)}</p>
       <p><strong>Власник:</strong> ${getOwnerName(territory.ownerId)}</p>
       <p><strong>Захист:</strong> ${plannedDefense ? "Заплановано" : "Немає"}</p>
-      <p><strong>Атак на територію:</strong> ${incomingAttacks.length}</p>
-
-      ${renderTerritoryActionMenu()}
     </div>
   `;
 }
@@ -435,6 +431,10 @@ function renderGame() {
           </div>
 
           <div>
+            ${renderTerritoryPlansPanel(state.selectedTerritoryId)}
+          </div>
+
+          <div>
             ${renderAttackPanel()}
           </div>
 
@@ -503,6 +503,8 @@ function attachControlEvents() {
 
   const removeAttackButtons = document.querySelectorAll(".remove-attack-button");
   const removeDefenseButtons = document.querySelectorAll(".remove-defense-button");
+
+  const removeDefenseByTerritoryButtons = document.querySelectorAll(".remove-defense-by-territory-button");
 
   if (attackActionButton) {
     attackActionButton.addEventListener("click", () => {
@@ -598,6 +600,17 @@ function attachControlEvents() {
       renderGame();
     });
   });
+
+  removeDefenseByTerritoryButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const territoryId = Number(button.dataset.territoryId);
+      state.plannedDefenses = state.plannedDefenses.filter(
+        item => item.territoryId !== territoryId
+      );
+      renderGame();
+    });
+  });
+
 }
 
 function initGame() {
@@ -681,6 +694,122 @@ function resetDefenseDraft() {
     territoryId: null,
     selectedCardIds: []
   };
+}
+
+function renderTerritoryPlansPanel(selectedTerritoryId) {
+  if (!selectedTerritoryId) {
+    return `
+      <div class="attack-panel">
+        <h3>Дії по території</h3>
+        <p>Вибери територію, щоб побачити заплановані дії.</p>
+      </div>
+    `;
+  }
+
+  const territory = getTerritoryById(selectedTerritoryId);
+
+  if (!territory) {
+    return `
+      <div class="attack-panel">
+        <h3>Дії по території</h3>
+        <p>Територію не знайдено.</p>
+      </div>
+    `;
+  }
+
+  const plannedDefense = getPlannedDefenseForTerritory(territory.id);
+  const outgoingAttacks = getPlannedAttacksFromTerritory(territory.id);
+  const incomingAttacks = getPlannedAttacksToTerritory(territory.id);
+
+  return `
+    <div class="attack-panel">
+      <h3>Дії по території</h3>
+
+      <div style="margin-top: 12px;">
+        <p><strong>Захист:</strong></p>
+        ${
+          plannedDefense
+            ? `
+              <div style="margin-top: 8px;">
+                <span>${territory.name}</span>
+                <button
+                  class="control-button secondary remove-defense-by-territory-button"
+                  data-territory-id="${territory.id}"
+                  style="margin-left: 8px; padding: 4px 8px;"
+                >
+                  Скасувати
+                </button>
+              </div>
+            `
+            : `<p>Немає</p>`
+        }
+      </div>
+
+      <div style="margin-top: 16px;">
+        <p><strong>Атаки з території:</strong></p>
+        ${
+          outgoingAttacks.length
+            ? `
+              <ul style="margin: 8px 0 0 18px; padding: 0;">
+                ${outgoingAttacks.map(attack => {
+                  const target = getTerritoryById(attack.targetTerritoryId);
+                  const attackIndex = state.plannedAttacks.findIndex(item =>
+                    item.sourceTerritoryId === attack.sourceTerritoryId &&
+                    item.targetTerritoryId === attack.targetTerritoryId
+                  );
+
+                  return `
+                    <li>
+                      ${territory.name} → ${target?.name || "?"}
+                      <button
+                        class="control-button secondary remove-attack-button"
+                        data-attack-index="${attackIndex}"
+                        style="margin-left: 8px; padding: 4px 8px;"
+                      >
+                        Скасувати
+                      </button>
+                    </li>
+                  `;
+                }).join("")}
+              </ul>
+            `
+            : `<p>Немає</p>`
+        }
+      </div>
+
+      <div style="margin-top: 16px;">
+        <p><strong>Атаки на територію:</strong></p>
+        ${
+          incomingAttacks.length
+            ? `
+              <ul style="margin: 8px 0 0 18px; padding: 0;">
+                ${incomingAttacks.map(attack => {
+                  const source = getTerritoryById(attack.sourceTerritoryId);
+                  const attackIndex = state.plannedAttacks.findIndex(item =>
+                    item.sourceTerritoryId === attack.sourceTerritoryId &&
+                    item.targetTerritoryId === attack.targetTerritoryId
+                  );
+
+                  return `
+                    <li>
+                      ${source?.name || "?"} → ${territory.name}
+                      <button
+                        class="control-button secondary remove-attack-button"
+                        data-attack-index="${attackIndex}"
+                        style="margin-left: 8px; padding: 4px 8px;"
+                      >
+                        Скасувати
+                      </button>
+                    </li>
+                  `;
+                }).join("")}
+              </ul>
+            `
+            : `<p>Немає</p>`
+        }
+      </div>
+    </div>
+  `;
 }
 
 initGame();
