@@ -340,7 +340,7 @@ function renderTerritoryContextMenu() {
   return `
     <div
       class="territory-context-menu"
-      style="left: calc(${territory.x}% + 80px); top: calc(${territory.y}% + 18px);"
+      style="left: calc(${territory.x}%); top: calc(${territory.y}% + 28px);"
     >
       ${!isAttackSource ? `<button class="control-button" id="attackActionButton">Атакувати</button>` : ""}
       ${!isDefenseSource ? `<button class="control-button secondary" id="defenseActionButton">Захистити</button>` : ""}
