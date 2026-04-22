@@ -331,16 +331,18 @@ function renderTerritoryContextMenu() {
   }
 
   const territory = getTerritoryById(state.selectedTerritoryId);
-
-  if (!territory || !isOwnTerritory(territory)) {
+  if (!territory) {
     return "";
   }
 
+  const sourceTerritory = getTerritoryById(state.attackDraft.sourceTerritoryId);
+  const isOwnSelected = isOwnTerritory(territory);
   const isAttackSource = state.attackDraft.sourceTerritoryId === territory.id;
+  const isAttackTarget = state.attackDraft.targetTerritoryId === territory.id;
   const isDefenseSource = state.defenseDraft.territoryId === territory.id;
 
-  // 1. Початковий стан: показуємо дві кнопки
-  if (!isAttackSource && !isDefenseSource) {
+  // 1. Початковий стан: тільки для своєї території
+  if (!state.actionStep && isOwnSelected) {
     return `
       <div
         class="territory-context-menu"
@@ -352,7 +354,7 @@ function renderTerritoryContextMenu() {
     `;
   }
 
-  // 2. Режим атаки: вибір цілі
+  // 2. Обрано свою територію для атаки, але ціль ще не вибрана
   if (isAttackSource && state.actionStep === "chooseTarget") {
     return `
       <div
@@ -365,21 +367,19 @@ function renderTerritoryContextMenu() {
     `;
   }
 
-  // 3. Режим атаки: ціль вибрана
+  // 3. Ціль атаки вже вибрана — меню показується біля ЦІЛЬОВОЇ території
   if (
-    isAttackSource &&
+    isAttackTarget &&
     state.actionStep === "confirmAttackTarget" &&
-    state.attackDraft.targetTerritoryId
+    sourceTerritory
   ) {
-    const target = getTerritoryById(state.attackDraft.targetTerritoryId);
-
     return `
       <div
         class="territory-context-menu"
         style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
       >
         <div style="color: white; font-weight: bold; width: 100%;">
-          Атакуємо ${territory.name} → ${target ? target.name : "?"}
+          Атакуємо ${sourceTerritory.name} → ${territory.name}
         </div>
         <button class="control-button" id="confirmAttackTargetButton">Підтвердити</button>
         <button class="control-button secondary" id="cancelAttackDraftButton">Скасувати</button>
@@ -387,20 +387,27 @@ function renderTerritoryContextMenu() {
     `;
   }
 
-  // 4. Режим атаки: вибір карт
-  if (isAttackSource && state.actionStep === "chooseAttackCards") {
+  // 4. Вибір карт для атаки — меню теж біля цілі
+  if (
+    isAttackTarget &&
+    state.actionStep === "chooseAttackCards" &&
+    sourceTerritory
+  ) {
     return `
       <div
         class="territory-context-menu"
         style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
       >
+        <div style="color: white; font-weight: bold; width: 100%;">
+          Атакуємо ${sourceTerritory.name} → ${territory.name}
+        </div>
         <button class="control-button" id="openAttackCardsButton">Вибір карт</button>
         <button class="control-button secondary" id="cancelAttackDraftButton">Скасувати</button>
       </div>
     `;
   }
 
-  // 5. Режим захисту: вибір карт
+  // 5. Захист — меню біля своєї території
   if (isDefenseSource && state.actionStep === "chooseDefenseCards") {
     return `
       <div
@@ -555,10 +562,14 @@ function attachTerritoryEvents() {
           isValidTarget
         ) {
           state.attackDraft.targetTerritoryId = territoryId;
+          state.selectedTerritoryId = territoryId;
           state.actionStep = "confirmAttackTarget";
+          renderGame();
+          return;
         }
       }
 
+      state.selectedTerritoryId = territoryId;
       renderGame();
     });
   });

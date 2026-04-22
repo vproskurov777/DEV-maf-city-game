@@ -270,22 +270,6 @@ h1, h2, h3 {
   margin: 8px 0;
 }
 
-.control-button.success {
-  background: #16a34a;
-}
-
-.control-button.success:hover {
-  background: #15803d;
-}
-
-.control-button.danger {
-  background: #dc2626;
-}
-
-.control-button.danger:hover {
-  background: #b91c1c;
-}
-
 .territory-label.defended {
   box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.95);
 }
@@ -389,4 +373,33 @@ h1, h2, h3 {
 
 .control-button.defense:hover {
   background: #15803d;
+}
+
+.control-button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+/* 🔵 ПІДТВЕРДИТИ */
+.control-button.primary {
+  background: #2563eb;
+  color: white;
+}
+
+.control-button.primary:hover {
+  background: #1d4ed8;
+}
+
+/* ⚪ СКАСУВАТИ */
+.control-button.secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.control-button.secondary:hover {
+  background: #4b5563;
 }
