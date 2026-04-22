@@ -414,8 +414,8 @@ function renderTerritoryContextMenu() {
         class="territory-context-menu"
         style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
       >
-        <button class="control-button defense" id="openDefenseCardsButton">Вибір карт</button>
-        <button class="control-button danger" id="cancelDefenseDraftButton">Скасувати</button>
+        <button class="control-button primary" id="openDefenseCardsButton">Вибір карт</button>
+        <button class="control-button secondary" id="cancelDefenseDraftButton">Скасувати</button>
       </div>
     `;
   }
