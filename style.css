@@ -374,3 +374,19 @@ h1, h2, h3 {
   padding: 8px 12px;
   font-size: 14px;
 }
+
+.control-button.attack {
+  background: #dc2626;
+}
+
+.control-button.attack:hover {
+  background: #b91c1c;
+}
+
+.control-button.defense {
+  background: #16a34a;
+}
+
+.control-button.defense:hover {
+  background: #15803d;
+}

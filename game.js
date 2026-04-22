@@ -33,6 +33,8 @@ const state = {
   plannedAttacks: [],
   plannedDefenses: [],
 
+  actionStep: null,
+
   currentRound: 1,
   currentPhase: "morning"
 };
@@ -337,21 +339,81 @@ function renderTerritoryContextMenu() {
   const isAttackSource = state.attackDraft.sourceTerritoryId === territory.id;
   const isDefenseSource = state.defenseDraft.territoryId === territory.id;
 
-  return `
-    <div
-      class="territory-context-menu"
-      style="left: calc(${territory.x}%); top: calc(${territory.y}% + 28px);"
-    >
-      ${!isAttackSource ? `<button class="control-button" id="attackActionButton">Атакувати</button>` : ""}
-      ${!isDefenseSource ? `<button class="control-button secondary" id="defenseActionButton">Захистити</button>` : ""}
+  // 1. Початковий стан: показуємо дві кнопки
+  if (!isAttackSource && !isDefenseSource) {
+    return `
+      <div
+        class="territory-context-menu"
+        style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
+      >
+        <button class="control-button attack" id="attackActionButton">Атака</button>
+        <button class="control-button defense" id="defenseActionButton">Захист</button>
+      </div>
+    `;
+  }
 
-      ${isAttackSource ? `<button class="control-button" id="confirmAttackDraftButton">Підтвердити атаку</button>` : ""}
-      ${isAttackSource ? `<button class="control-button secondary" id="cancelAttackDraftButton">Скасувати атаку</button>` : ""}
+  // 2. Режим атаки: вибір цілі
+  if (isAttackSource && state.actionStep === "chooseTarget") {
+    return `
+      <div
+        class="territory-context-menu"
+        style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
+      >
+        <span style="color: white; font-weight: bold;">Виберіть територію для атаки</span>
+        <button class="control-button secondary" id="cancelAttackDraftButton">Скасувати</button>
+      </div>
+    `;
+  }
 
-      ${isDefenseSource ? `<button class="control-button success" id="confirmDefenseDraftButton">Підтвердити захист</button>` : ""}
-      ${isDefenseSource ? `<button class="control-button danger" id="cancelDefenseDraftButton">Скасувати захист</button>` : ""}
-    </div>
-  `;
+  // 3. Режим атаки: ціль вибрана
+  if (
+    isAttackSource &&
+    state.actionStep === "confirmAttackTarget" &&
+    state.attackDraft.targetTerritoryId
+  ) {
+    const target = getTerritoryById(state.attackDraft.targetTerritoryId);
+
+    return `
+      <div
+        class="territory-context-menu"
+        style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
+      >
+        <div style="color: white; font-weight: bold; width: 100%;">
+          Атакуємо ${territory.name} → ${target ? target.name : "?"}
+        </div>
+        <button class="control-button" id="confirmAttackTargetButton">Підтвердити</button>
+        <button class="control-button secondary" id="cancelAttackDraftButton">Скасувати</button>
+      </div>
+    `;
+  }
+
+  // 4. Режим атаки: вибір карт
+  if (isAttackSource && state.actionStep === "chooseAttackCards") {
+    return `
+      <div
+        class="territory-context-menu"
+        style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
+      >
+        <button class="control-button" id="openAttackCardsButton">Вибір карт</button>
+        <button class="control-button secondary" id="cancelAttackDraftButton">Скасувати</button>
+      </div>
+    `;
+  }
+
+  // 5. Режим захисту: вибір карт
+  if (isDefenseSource && state.actionStep === "chooseDefenseCards") {
+    return `
+      <div
+        class="territory-context-menu"
+        style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
+      >
+        <button class="control-button defense" id="openDefenseCardsButton">Вибір карт</button>
+        <button class="control-button danger" id="cancelDefenseDraftButton">Скасувати</button>
+      </div>
+    `;
+  }
+
+  return "";
 }
 
 function renderAttackPanel() {
@@ -484,7 +546,7 @@ function attachTerritoryEvents() {
       const territoryId = Number(element.dataset.territoryId);
       state.selectedTerritoryId = territoryId;
 
-      if (state.attackDraft.sourceTerritoryId) {
+      if (state.attackDraft.sourceTerritoryId && state.actionStep === "chooseTarget") {
         const availableTargets = getAvailableAttackTargets(state.attackDraft.sourceTerritoryId);
         const isValidTarget = availableTargets.some(item => item.id === territoryId);
 
@@ -493,6 +555,7 @@ function attachTerritoryEvents() {
           isValidTarget
         ) {
           state.attackDraft.targetTerritoryId = territoryId;
+          state.actionStep = "confirmAttackTarget";
         }
       }
 
@@ -521,15 +584,15 @@ function attachControlEvents() {
   const attackActionButton = document.getElementById("attackActionButton");
   const defenseActionButton = document.getElementById("defenseActionButton");
 
-  const confirmAttackDraftButton = document.getElementById("confirmAttackDraftButton");
   const cancelAttackDraftButton = document.getElementById("cancelAttackDraftButton");
-
-  const confirmDefenseDraftButton = document.getElementById("confirmDefenseDraftButton");
   const cancelDefenseDraftButton = document.getElementById("cancelDefenseDraftButton");
+
+  const confirmAttackTargetButton = document.getElementById("confirmAttackTargetButton");
+  const openAttackCardsButton = document.getElementById("openAttackCardsButton");
+  const openDefenseCardsButton = document.getElementById("openDefenseCardsButton");
 
   const removeAttackButtons = document.querySelectorAll(".remove-attack-button");
   const removeDefenseButtons = document.querySelectorAll(".remove-defense-button");
-
   const removeDefenseByTerritoryButtons = document.querySelectorAll(".remove-defense-by-territory-button");
 
   if (attackActionButton) {
@@ -540,7 +603,11 @@ function attachControlEvents() {
       if (!territory || !isOwnTerritory(territory)) return;
 
       resetAttackDraft();
+      resetDefenseDraft();
+
       state.attackDraft.sourceTerritoryId = territory.id;
+      state.actionStep = "chooseTarget";
+
       renderGame();
     });
   }
@@ -552,54 +619,41 @@ function attachControlEvents() {
       const territory = getTerritoryById(state.selectedTerritoryId);
       if (!territory || !isOwnTerritory(territory)) return;
 
+      resetAttackDraft();
       resetDefenseDraft();
+
       state.defenseDraft.territoryId = territory.id;
+      state.actionStep = "chooseDefenseCards";
+
       renderGame();
     });
   }
 
-  if (confirmAttackDraftButton) {
-    confirmAttackDraftButton.addEventListener("click", () => {
-      if (!state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) {
-        return;
-      }
+  if (confirmAttackTargetButton) {
+    confirmAttackTargetButton.addEventListener("click", () => {
+      if (!state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) return;
 
-      state.plannedAttacks.push({
-        sourceTerritoryId: state.attackDraft.sourceTerritoryId,
-        targetTerritoryId: state.attackDraft.targetTerritoryId,
-        cards: []
-      });
-
-      resetAttackDraft();
+      state.actionStep = "chooseAttackCards";
       renderGame();
+    });
+  }
+
+  if (openAttackCardsButton) {
+    openAttackCardsButton.addEventListener("click", () => {
+      alert("Наступний крок — тут буде список карт для атаки.");
+    });
+  }
+
+  if (openDefenseCardsButton) {
+    openDefenseCardsButton.addEventListener("click", () => {
+      alert("Наступний крок — тут буде список карт для захисту.");
     });
   }
 
   if (cancelAttackDraftButton) {
     cancelAttackDraftButton.addEventListener("click", () => {
       resetAttackDraft();
-      renderGame();
-    });
-  }
-
-  if (confirmDefenseDraftButton) {
-    confirmDefenseDraftButton.addEventListener("click", () => {
-      if (!state.defenseDraft.territoryId) {
-        return;
-      }
-
-      const alreadyExists = state.plannedDefenses.some(
-        item => item.territoryId === state.defenseDraft.territoryId
-      );
-
-      if (!alreadyExists) {
-        state.plannedDefenses.push({
-          territoryId: state.defenseDraft.territoryId,
-          cards: []
-        });
-      }
-
-      resetDefenseDraft();
+      state.actionStep = null;
       renderGame();
     });
   }
@@ -607,6 +661,7 @@ function attachControlEvents() {
   if (cancelDefenseDraftButton) {
     cancelDefenseDraftButton.addEventListener("click", () => {
       resetDefenseDraft();
+      state.actionStep = null;
       renderGame();
     });
   }
@@ -636,7 +691,6 @@ function attachControlEvents() {
       renderGame();
     });
   });
-
 }
 
 function initGame() {
