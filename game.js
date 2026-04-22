@@ -651,27 +651,34 @@ function attachControlEvents() {
   const attackActionButton = document.getElementById("attackActionButton");
   const defenseActionButton = document.getElementById("defenseActionButton");
 
-  const cancelAttackDraftButton = document.getElementById("cancelAttackDraftButton");
-  const cancelDefenseDraftButton = document.getElementById("cancelDefenseDraftButton");
-
   const confirmAttackTargetButton = document.getElementById("confirmAttackTargetButton");
   const confirmAttackCardsButton = document.getElementById("confirmAttackCardsButton");
   const confirmDefenseCardsButton = document.getElementById("confirmDefenseCardsButton");
+
+  const cancelAttackDraftButton = document.getElementById("cancelAttackDraftButton");
+  const cancelDefenseDraftButton = document.getElementById("cancelDefenseDraftButton");
 
   const removeAttackButtons = document.querySelectorAll(".remove-attack-button");
   const removeDefenseButtons = document.querySelectorAll(".remove-defense-button");
   const removeDefenseByTerritoryButtons = document.querySelectorAll(".remove-defense-by-territory-button");
 
+  // 1. Почати атаку
   if (attackActionButton) {
     attackActionButton.addEventListener("click", () => {
-      if (!state.selectedTerritoryId) return;
+      if (!state.selectedTerritoryId) {
+        return;
+      }
 
       const territory = getTerritoryById(state.selectedTerritoryId);
-      if (!territory || !isOwnTerritory(territory)) return;
+
+      if (!territory || !isOwnTerritory(territory)) {
+        return;
+      }
 
       resetAttackDraft();
       resetDefenseDraft();
 
+      state.selectedCards = [];
       state.attackDraft.sourceTerritoryId = territory.id;
       state.actionStep = "chooseTarget";
 
@@ -679,16 +686,23 @@ function attachControlEvents() {
     });
   }
 
+  // 2. Почати захист
   if (defenseActionButton) {
     defenseActionButton.addEventListener("click", () => {
-      if (!state.selectedTerritoryId) return;
+      if (!state.selectedTerritoryId) {
+        return;
+      }
 
       const territory = getTerritoryById(state.selectedTerritoryId);
-      if (!territory || !isOwnTerritory(territory)) return;
+
+      if (!territory || !isOwnTerritory(territory)) {
+        return;
+      }
 
       resetAttackDraft();
       resetDefenseDraft();
 
+      state.selectedCards = [];
       state.defenseDraft.territoryId = territory.id;
       state.actionStep = "chooseDefenseCards";
 
@@ -696,80 +710,34 @@ function attachControlEvents() {
     });
   }
 
+  // 3. Підтвердити ціль атаки -> перейти до вибору карт
   if (confirmAttackTargetButton) {
     confirmAttackTargetButton.addEventListener("click", () => {
-      if (!state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) return;
-
-      state.actionStep = "chooseAttackCards";
-      renderGame();
-    });
-  }
-
-  if (openAttackCardsButton) {
-    openAttackCardsButton.addEventListener("click", () => {
-      alert("Наступний крок — тут буде список карт для атаки.");
-    });
-  }
-
-  if (openDefenseCardsButton) {
-    openDefenseCardsButton.addEventListener("click", () => {
-      alert("Наступний крок — тут буде список карт для захисту.");
-    });
-  }
-
-  if (cancelAttackDraftButton) {
-    cancelAttackDraftButton.addEventListener("click", () => {
-      resetAttackDraft();
-      state.selectedCards = [];
-      state.actionStep = null;
-      renderGame();
-    });
-  }
-
-  if (cancelDefenseDraftButton) {
-    cancelDefenseDraftButton.addEventListener("click", () => {
-      resetDefenseDraft();
-      state.selectedCards = [];
-      state.actionStep = null;
-      renderGame();
-    });
-  }
-
-  removeAttackButtons.forEach(button => {
-    button.addEventListener("click", () => {
-      const index = Number(button.dataset.attackIndex);
-      state.plannedAttacks.splice(index, 1);
-      renderGame();
-    });
-  });
-
-  removeDefenseButtons.forEach(button => {
-    button.addEventListener("click", () => {
-      const index = Number(button.dataset.defenseIndex);
-      state.plannedDefenses.splice(index, 1);
-      renderGame();
-    });
-  });
-
-  removeDefenseByTerritoryButtons.forEach(button => {
-    button.addEventListener("click", () => {
-      const territoryId = Number(button.dataset.territoryId);
-      state.plannedDefenses = state.plannedDefenses.filter(
-        item => item.territoryId !== territoryId
-      );
-      renderGame();
-    });
-  });
-
-    if (confirmAttackCardsButton) {
-    confirmAttackCardsButton.addEventListener("click", () => {
-      const team = state.teams.find(t => t.id === state.currentTeamId);
-
-      if (!team || !state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) {
+      if (!state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) {
         return;
       }
 
-      const selectedCards = state.selectedCards.map(index => team.cards[index]);
+      state.selectedCards = [];
+      state.actionStep = "chooseAttackCards";
+
+      renderGame();
+    });
+  }
+
+  // 4. Підтвердити карти атаки
+  if (confirmAttackCardsButton) {
+    confirmAttackCardsButton.addEventListener("click", () => {
+      const team = state.teams.find(t => t.id === state.currentTeamId);
+
+      if (!team) {
+        return;
+      }
+
+      if (!state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) {
+        return;
+      }
+
+      const selectedCards = state.selectedCards.map(index => team.cards[index]).filter(Boolean);
 
       if (!selectedCards.length) {
         alert("Оберіть карти для атаки");
@@ -790,30 +758,39 @@ function attachControlEvents() {
     });
   }
 
+  // 5. Підтвердити карти захисту
   if (confirmDefenseCardsButton) {
     confirmDefenseCardsButton.addEventListener("click", () => {
       const team = state.teams.find(t => t.id === state.currentTeamId);
 
-      if (!team || !state.defenseDraft.territoryId) {
+      if (!team) {
         return;
       }
 
-      const selectedCards = state.selectedCards.map(index => team.cards[index]);
+      if (!state.defenseDraft.territoryId) {
+        return;
+      }
+
+      const selectedCards = state.selectedCards.map(index => team.cards[index]).filter(Boolean);
 
       if (!selectedCards.length) {
         alert("Оберіть карти для захисту");
         return;
       }
 
-      const alreadyExists = state.plannedDefenses.some(
+      const existingIndex = state.plannedDefenses.findIndex(
         item => item.territoryId === state.defenseDraft.territoryId
       );
 
-      if (!alreadyExists) {
-        state.plannedDefenses.push({
-          territoryId: state.defenseDraft.territoryId,
-          cards: selectedCards.map(card => `${card.rank}${card.suit}`)
-        });
+      const defensePayload = {
+        territoryId: state.defenseDraft.territoryId,
+        cards: selectedCards.map(card => `${card.rank}${card.suit}`)
+      };
+
+      if (existingIndex >= 0) {
+        state.plannedDefenses[existingIndex] = defensePayload;
+      } else {
+        state.plannedDefenses.push(defensePayload);
       }
 
       resetDefenseDraft();
@@ -823,6 +800,73 @@ function attachControlEvents() {
       renderGame();
     });
   }
+
+  // 6. Скасувати чернетку атаки
+  if (cancelAttackDraftButton) {
+    cancelAttackDraftButton.addEventListener("click", () => {
+      resetAttackDraft();
+      state.selectedCards = [];
+      state.actionStep = null;
+
+      renderGame();
+    });
+  }
+
+  // 7. Скасувати чернетку захисту
+  if (cancelDefenseDraftButton) {
+    cancelDefenseDraftButton.addEventListener("click", () => {
+      resetDefenseDraft();
+      state.selectedCards = [];
+      state.actionStep = null;
+
+      renderGame();
+    });
+  }
+
+  // 8. Скасувати заплановану атаку зі списку
+  removeAttackButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.attackIndex);
+
+      if (Number.isNaN(index)) {
+        return;
+      }
+
+      state.plannedAttacks.splice(index, 1);
+      renderGame();
+    });
+  });
+
+  // 9. Скасувати запланований захист зі списку
+  removeDefenseButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.defenseIndex);
+
+      if (Number.isNaN(index)) {
+        return;
+      }
+
+      state.plannedDefenses.splice(index, 1);
+      renderGame();
+    });
+  });
+
+  // 10. Скасувати захист по territoryId
+  removeDefenseByTerritoryButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const territoryId = Number(button.dataset.territoryId);
+
+      if (Number.isNaN(territoryId)) {
+        return;
+      }
+
+      state.plannedDefenses = state.plannedDefenses.filter(
+        item => item.territoryId !== territoryId
+      );
+
+      renderGame();
+    });
+  });
 }
 
 function initGame() {
