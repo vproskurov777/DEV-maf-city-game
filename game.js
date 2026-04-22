@@ -35,6 +35,9 @@ const state = {
 
   actionStep: null,
 
+  selectedCards: [],
+  currentTeamId: 1,
+
   currentRound: 1,
   currentPhase: "morning"
 };
@@ -401,7 +404,10 @@ function renderTerritoryContextMenu() {
         <div style="color: white; font-weight: bold; width: 100%;">
           Атакуємо ${sourceTerritory.name} → ${territory.name}
         </div>
-        <button class="control-button" id="openAttackCardsButton">Вибір карт</button>
+
+        ${renderCardsSelector()}
+
+        <button class="control-button primary" id="confirmAttackCardsButton">Підтвердити</button>
         <button class="control-button secondary" id="cancelAttackDraftButton">Скасувати</button>
       </div>
     `;
@@ -414,13 +420,44 @@ function renderTerritoryContextMenu() {
         class="territory-context-menu"
         style="left: calc(${territory.x}% - 10px); top: calc(${territory.y}% + 32px);"
       >
-        <button class="control-button primary" id="openDefenseCardsButton">Вибір карт</button>
+        <div style="color: white; font-weight: bold; width: 100%;">
+          Захист території ${territory.name}
+        </div>
+
+        ${renderCardsSelector()}
+
+        <button class="control-button primary" id="confirmDefenseCardsButton">Підтвердити</button>
         <button class="control-button secondary" id="cancelDefenseDraftButton">Скасувати</button>
       </div>
     `;
   }
 
   return "";
+}
+
+function renderCardsSelector() {
+  const team = state.teams.find(t => t.id === state.currentTeamId);
+
+  if (!team) {
+    return "";
+  }
+
+  return `
+    <div class="cards-container">
+      ${team.cards.map((card, index) => {
+        const isSelected = state.selectedCards.includes(index);
+
+        return `
+          <div
+            class="card ${card.suit} ${isSelected ? "selected" : ""}"
+            data-card-index="${index}"
+          >
+            ${card.rank}${card.suit}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function renderAttackPanel() {
@@ -543,6 +580,7 @@ function renderGame() {
 
   attachTerritoryEvents();
   attachControlEvents();
+  attachCardEvents();
 }
 
 function attachTerritoryEvents() {
@@ -591,6 +629,24 @@ function attachTerritoryEvents() {
   }
 }
 
+function attachCardEvents() {
+  const cardElements = document.querySelectorAll("[data-card-index]");
+
+  cardElements.forEach(element => {
+    element.addEventListener("click", () => {
+      const index = Number(element.dataset.cardIndex);
+
+      if (state.selectedCards.includes(index)) {
+        state.selectedCards = state.selectedCards.filter(i => i !== index);
+      } else {
+        state.selectedCards.push(index);
+      }
+
+      renderGame();
+    });
+  });
+}
+
 function attachControlEvents() {
   const attackActionButton = document.getElementById("attackActionButton");
   const defenseActionButton = document.getElementById("defenseActionButton");
@@ -599,8 +655,8 @@ function attachControlEvents() {
   const cancelDefenseDraftButton = document.getElementById("cancelDefenseDraftButton");
 
   const confirmAttackTargetButton = document.getElementById("confirmAttackTargetButton");
-  const openAttackCardsButton = document.getElementById("openAttackCardsButton");
-  const openDefenseCardsButton = document.getElementById("openDefenseCardsButton");
+  const confirmAttackCardsButton = document.getElementById("confirmAttackCardsButton");
+  const confirmDefenseCardsButton = document.getElementById("confirmDefenseCardsButton");
 
   const removeAttackButtons = document.querySelectorAll(".remove-attack-button");
   const removeDefenseButtons = document.querySelectorAll(".remove-defense-button");
@@ -664,6 +720,7 @@ function attachControlEvents() {
   if (cancelAttackDraftButton) {
     cancelAttackDraftButton.addEventListener("click", () => {
       resetAttackDraft();
+      state.selectedCards = [];
       state.actionStep = null;
       renderGame();
     });
@@ -672,6 +729,7 @@ function attachControlEvents() {
   if (cancelDefenseDraftButton) {
     cancelDefenseDraftButton.addEventListener("click", () => {
       resetDefenseDraft();
+      state.selectedCards = [];
       state.actionStep = null;
       renderGame();
     });
@@ -702,6 +760,69 @@ function attachControlEvents() {
       renderGame();
     });
   });
+
+    if (confirmAttackCardsButton) {
+    confirmAttackCardsButton.addEventListener("click", () => {
+      const team = state.teams.find(t => t.id === state.currentTeamId);
+
+      if (!team || !state.attackDraft.sourceTerritoryId || !state.attackDraft.targetTerritoryId) {
+        return;
+      }
+
+      const selectedCards = state.selectedCards.map(index => team.cards[index]);
+
+      if (!selectedCards.length) {
+        alert("Оберіть карти для атаки");
+        return;
+      }
+
+      state.plannedAttacks.push({
+        sourceTerritoryId: state.attackDraft.sourceTerritoryId,
+        targetTerritoryId: state.attackDraft.targetTerritoryId,
+        cards: selectedCards.map(card => `${card.rank}${card.suit}`)
+      });
+
+      resetAttackDraft();
+      state.selectedCards = [];
+      state.actionStep = null;
+
+      renderGame();
+    });
+  }
+
+  if (confirmDefenseCardsButton) {
+    confirmDefenseCardsButton.addEventListener("click", () => {
+      const team = state.teams.find(t => t.id === state.currentTeamId);
+
+      if (!team || !state.defenseDraft.territoryId) {
+        return;
+      }
+
+      const selectedCards = state.selectedCards.map(index => team.cards[index]);
+
+      if (!selectedCards.length) {
+        alert("Оберіть карти для захисту");
+        return;
+      }
+
+      const alreadyExists = state.plannedDefenses.some(
+        item => item.territoryId === state.defenseDraft.territoryId
+      );
+
+      if (!alreadyExists) {
+        state.plannedDefenses.push({
+          territoryId: state.defenseDraft.territoryId,
+          cards: selectedCards.map(card => `${card.rank}${card.suit}`)
+        });
+      }
+
+      resetDefenseDraft();
+      state.selectedCards = [];
+      state.actionStep = null;
+
+      renderGame();
+    });
+  }
 }
 
 function initGame() {

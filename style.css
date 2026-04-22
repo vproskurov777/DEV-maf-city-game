@@ -403,3 +403,39 @@ h1, h2, h3 {
 .control-button.secondary:hover {
   background: #4b5563;
 }
+
+.cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.card {
+  width: 42px;
+  height: 58px;
+  background: white;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+  border: 2px solid transparent;
+  user-select: none;
+}
+
+.card.selected {
+  border: 2px solid #2563eb;
+  transform: translateY(-4px);
+}
+
+.card.♦,
+.card.♥ {
+  color: red;
+}
+
+.card.♠,
+.card.♣ {
+  color: black;
+}
