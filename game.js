@@ -250,7 +250,7 @@ function renderMap(territories, selectedTerritoryId) {
     <div class="map-wrapper">
       <div class="real-map" id="realMap">
         ${DEBUG ? `<div class="debug-coords" id="coordsBox">X: 0% | Y: 0%</div>` : ""}
-
+ 
         ${territories.map(territory => {
           const ownerClass = territory.ownerId ? `owner-${territory.ownerId}` : "owner-none";
           const selectedClass = territory.id === selectedTerritoryId ? "selected" : "";
@@ -281,6 +281,9 @@ function renderMap(territories, selectedTerritoryId) {
             </div>
           `;
         }).join("")}
+
+        ${renderTerritoryContextMenu()}
+
       </div>
     </div>
     ${renderLegend()}
@@ -316,6 +319,37 @@ function renderSelectedTerritoryInfo(selectedTerritoryId) {
       <p><strong>Тип:</strong> ${getTerritoryTypeLabel(territory.type)}</p>
       <p><strong>Власник:</strong> ${getOwnerName(territory.ownerId)}</p>
       <p><strong>Захист:</strong> ${plannedDefense ? "Заплановано" : "Немає"}</p>
+    </div>
+  `;
+}
+
+function renderTerritoryContextMenu() {
+  if (!state.selectedTerritoryId) {
+    return "";
+  }
+
+  const territory = getTerritoryById(state.selectedTerritoryId);
+
+  if (!territory || !isOwnTerritory(territory)) {
+    return "";
+  }
+
+  const isAttackSource = state.attackDraft.sourceTerritoryId === territory.id;
+  const isDefenseSource = state.defenseDraft.territoryId === territory.id;
+
+  return `
+    <div
+      class="territory-context-menu"
+      style="left: calc(${territory.x}% + 80px); top: calc(${territory.y}% + 18px);"
+    >
+      ${!isAttackSource ? `<button class="control-button" id="attackActionButton">Атакувати</button>` : ""}
+      ${!isDefenseSource ? `<button class="control-button secondary" id="defenseActionButton">Захистити</button>` : ""}
+
+      ${isAttackSource ? `<button class="control-button" id="confirmAttackDraftButton">Підтвердити атаку</button>` : ""}
+      ${isAttackSource ? `<button class="control-button secondary" id="cancelAttackDraftButton">Скасувати атаку</button>` : ""}
+
+      ${isDefenseSource ? `<button class="control-button success" id="confirmDefenseDraftButton">Підтвердити захист</button>` : ""}
+      ${isDefenseSource ? `<button class="control-button danger" id="cancelDefenseDraftButton">Скасувати захист</button>` : ""}
     </div>
   `;
 }
@@ -432,14 +466,6 @@ function renderGame() {
 
           <div>
             ${renderTerritoryPlansPanel(state.selectedTerritoryId)}
-          </div>
-
-          <div>
-            ${renderAttackPanel()}
-          </div>
-
-          <div>
-            ${renderDefensePanel()}
           </div>
         </div>
       </div>
